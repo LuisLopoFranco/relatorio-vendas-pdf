@@ -12,6 +12,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
+import pymupdf
 from fpdf import FPDF
 
 COLUNAS_OBRIGATORIAS = {"data", "produto", "vendedor", "quantidade", "preco_unitario"}
@@ -197,20 +198,32 @@ def gerar_pdf(df: pd.DataFrame, destino: Path, empresa: str) -> Resumo:
         [80, 30, 45, 35],
     )
 
+    destino.parent.mkdir(parents=True, exist_ok=True)
     pdf.output(str(destino))
     return resumo
+
+
+def gerar_previa(pdf: Path, destino: Path, dpi: int = 100) -> None:
+    """Salva a primeira página do PDF como imagem PNG, boa para mandar por WhatsApp ou pôr no README."""
+    with pymupdf.open(pdf) as documento:
+        documento[0].get_pixmap(dpi=dpi).save(destino)
 
 
 def main():
     parser = argparse.ArgumentParser(description="Gera um relatório PDF a partir de uma planilha de vendas.")
     parser.add_argument("planilha", type=Path, help="Arquivo .xlsx ou .csv")
-    parser.add_argument("-o", "--saida", type=Path, default=Path("relatorio.pdf"))
+    parser.add_argument("-o", "--saida", type=Path, default=Path("saida") / "relatorio.pdf")
     parser.add_argument("--empresa", default="Minha Empresa")
+    parser.add_argument("--previa", action="store_true", help="Também salva a primeira página como PNG, ao lado do PDF")
     args = parser.parse_args()
 
     df = carregar_planilha(args.planilha)
     resumo = gerar_pdf(df, args.saida, args.empresa)
     print(f"Relatório salvo em {args.saida} ({resumo.pedidos} pedidos, {moeda(resumo.faturamento)})")
+    if args.previa:
+        imagem = args.saida.with_suffix(".png")
+        gerar_previa(args.saida, imagem)
+        print(f"Prévia salva em {imagem}")
 
 
 if __name__ == "__main__":

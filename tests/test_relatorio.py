@@ -7,7 +7,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from gerar_dados_exemplo import gerar
-from gerar_relatorio import carregar_planilha, gerar_pdf, moeda, resumir
+from gerar_relatorio import carregar_planilha, gerar_pdf, gerar_previa, moeda, resumir
 
 
 def test_moeda_formato_brasileiro():
@@ -43,11 +43,14 @@ def test_coluna_faltando(tmp_path):
         carregar_planilha(caminho)
 
 
-def test_gera_pdf(tmp_path):
+def test_gera_pdf_e_previa(tmp_path):
     planilha = tmp_path / "vendas.xlsx"
     gerar(linhas=100).to_excel(planilha, index=False)
-    destino = tmp_path / "relatorio.pdf"
+    destino = tmp_path / "saida" / "relatorio.pdf"  # a pasta ainda não existe
 
     gerar_pdf(carregar_planilha(planilha), destino, "Loja Teste")
-
     assert destino.read_bytes().startswith(b"%PDF")
+
+    imagem = destino.with_suffix(".png")
+    gerar_previa(destino, imagem)
+    assert imagem.read_bytes().startswith(b"\x89PNG")
